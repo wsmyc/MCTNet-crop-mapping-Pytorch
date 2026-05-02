@@ -1,5 +1,6 @@
 """
 Training engine with metric tracking, early stopping, and LR scheduling.
+Optimized for Multi-Task heads and dynamic class counts.
 """
 
 import os
@@ -12,6 +13,8 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score
 import numpy as np
 
+# Import config to get live class counts
+from config import REGION_CONFIG
 
 class Trainer:
     def __init__(
@@ -36,7 +39,7 @@ class Trainer:
         self.criterion = nn.CrossEntropyLoss()
         self.scheduler = ReduceLROnPlateau(
             self.optimizer, mode="max", factor=lr_reduce_factor,
-            patience=lr_reduce_patience, min_lr=min_lr, verbose=True
+            patience=lr_reduce_patience, min_lr=min_lr
         )
         
         self.early_stop_patience = early_stop_patience
@@ -62,8 +65,8 @@ class Trainer:
         context = torch.enable_grad if is_train else torch.no_grad
         
         with context():
-            for batch in tqdm(dataloader, desc="Train" if is_train else "Val"):
-                # Move to device
+            for batch in tqdm(dataloader, desc="Train" if is_train else "Val", leave=False):
+                # Move everything in the batch dictionary to the GPU
                 for k in batch:
                     if isinstance(batch[k], torch.Tensor):
                         batch[k] = batch[k].to(self.device)
@@ -71,19 +74,20 @@ class Trainer:
                 if is_train:
                     self.optimizer.zero_grad()
                 
+                # Model returns a dict: {"logits": ..., "features": ...}
                 outputs = self.model(batch)
-                logits = outputs["logits"]
+                logits = outputs["logits"] # Shape: (Batch, Max_Possible_Classes)
                 
-                # Slice logits to correct class count per sample
-                # region_id: 0=AR (5 classes), 1=CA (6 classes)
-                losses = []
-                for i, rid in enumerate(batch["region_id"]):
-                    n_cls = 5 if rid.item() == 0 else 6
-                    logit_slice = logits[i, :n_cls].unsqueeze(0)
-                    label = batch["y"][i].unsqueeze(0)
-                    losses.append(self.criterion(logit_slice, label))
+                # --- DYNAMIC SLICING ---
+                # Identify state based on region_id of the first sample in batch
+                # 0 = Arkansas, 1 = California
+                state_key = "arkansas" if batch["region_id"][0].item() == 0 else "california"
+                n_cls = REGION_CONFIG[state_key]["num_classes"]
                 
-                loss = torch.stack(losses).mean()
+                # Slice logits to match the specific state's head
+                logits = logits[:, :n_cls]
+                
+                loss = self.criterion(logits, batch["y"])
                 
                 if is_train:
                     loss.backward()
@@ -91,12 +95,10 @@ class Trainer:
                 
                 total_loss += loss.item()
                 
-                # Predictions
-                for i, rid in enumerate(batch["region_id"]):
-                    n_cls = 5 if rid.item() == 0 else 6
-                    pred = logits[i, :n_cls].argmax().cpu().item()
-                    all_preds.append(pred)
-                    all_labels.append(batch["y"][i].cpu().item())
+                # Get Predictions
+                preds = logits.argmax(dim=-1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(batch["y"].cpu().numpy())
         
         avg_loss = total_loss / len(dataloader)
         oa, kappa, f1 = self._compute_metrics(all_labels, all_preds)
@@ -107,7 +109,8 @@ class Trainer:
         
         for epoch in range(1, self.epochs + 1):
             start = time.time()
-            train_loss, _, _, _ = self._run_epoch(train_loader, is_train=True)
+            
+            train_loss, train_oa, _, _ = self._run_epoch(train_loader, is_train=True)
             val_loss, val_oa, val_kappa, val_f1 = self._run_epoch(val_loader, is_train=False)
             
             self.history["train_loss"].append(train_loss)
@@ -115,25 +118,25 @@ class Trainer:
             self.history["val_kappa"].append(val_kappa)
             self.history["val_f1"].append(val_f1)
             
-            print(f"Epoch {epoch}/{self.epochs} | "
-                  f"Train Loss: {train_loss:.4f} | "
-                  f"Val OA: {val_oa:.4f} | Kappa: {val_kappa:.4f} | F1: {val_f1:.4f} | "
+            print(f"Epoch {epoch:03d}/{self.epochs} | "
+                  f"Loss: {train_loss:.4f} | Val OA: {val_oa:.4f} | "
+                  f"Kappa: {val_kappa:.4f} | F1: {val_f1:.4f} | "
                   f"Time: {time.time()-start:.1f}s")
             
-            # LR scheduling on OA
+            # Update LR based on Validation Accuracy
             self.scheduler.step(val_oa)
             
-            # Early stopping on OA
+            # Check for improvement
             if val_oa > self.best_metric:
                 self.best_metric = val_oa
                 self.patience_counter = 0
                 best_path = os.path.join(self.checkpoint_dir, f"{model_name}_best.pt")
                 torch.save(self.model.state_dict(), best_path)
-                print(f"  -> Saved best model (OA: {val_oa:.4f})")
+                print(f"  --> New Best Model Saved! (OA: {val_oa:.4f})")
             else:
                 self.patience_counter += 1
                 if self.patience_counter >= self.early_stop_patience:
-                    print(f"Early stopping triggered at epoch {epoch}")
+                    print(f"\n[Early Stopping] No improvement for {self.early_stop_patience} epochs.")
                     break
         
         return self.history, best_path

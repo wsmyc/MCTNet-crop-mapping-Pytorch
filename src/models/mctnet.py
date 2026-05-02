@@ -16,6 +16,7 @@ class MCTNet(nn.Module):
     def __init__(
         self,
         in_channels: int = 10,
+        
         use_indices: bool = False,
         use_geo_alpe: bool = False,
         use_attention_pooling: bool = False,

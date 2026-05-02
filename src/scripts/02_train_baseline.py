@@ -38,6 +38,7 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=TRAIN_CONFIG["batch_size"], shuffle=True, collate_fn=collate_fn)
     val_loader = DataLoader(val_ds, batch_size=TRAIN_CONFIG["batch_size"], shuffle=False, collate_fn=collate_fn)
     
+
     # Model
     model = MCTNet(
         in_channels=10,
@@ -45,6 +46,7 @@ def main():
         use_geo_alpe=False,
         use_attention_pooling=False,
         use_covariates=False,
+        n_cov=0,
     )
     
     device = torch.device(args.device)
@@ -62,6 +64,28 @@ def main():
     # Final evaluation
     model.load_state_dict(torch.load(best_path))
     model.eval()
+
+    # Final evaluation
+    print(f"\nTraining complete. Loading best model for testing...")
+    model.load_state_dict(torch.load(best_path))
+    model.to(device)
+    model.eval()
+
+    # 1. Load the Test Dataset
+    test_ds = UnifiedCropDataset(args.state, "test", use_indices=False, use_covariates=False)
+    test_loader = DataLoader(
+        test_ds, 
+        batch_size=TRAIN_CONFIG["batch_size"], 
+        shuffle=False, 
+        collate_fn=collate_fn
+    )
+    
+    # 2. Run the evaluation
+    print(f"\n--- Final Test Performance: {args.state.upper()} ---")
+    results = evaluate_by_region(model, test_loader, device, state_name=args.state)
+    
+    # Optional: print specific metrics if evaluate_by_region returns them
+    # print(f"Test Accuracy: {metrics['accuracy']:.2%}")
 
 
 if __name__ == "__main__":
