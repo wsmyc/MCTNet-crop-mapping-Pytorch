@@ -41,7 +41,7 @@ AR_CLASSES = {
     2: "Cotton",
     3: "Rice",
     5: "Soybeans",
-    176: "Grassland/Pasture"
+    0: "Others"
 }
 
 # California classes mapped to your Unique IDs: [3, 36, 69, 75, 76, 176]
@@ -51,31 +51,43 @@ CA_CLASSES = {
     36: "Almonds",
     69: "Grapes",
     75: "Pistachios",
-    76: "Walnuts",
-    176: "Grassland"
+    36 : "Alfalfa",
+    0: "Others"
 }
 
 REGION_CONFIG = {
     "arkansas": {
         "classes": AR_CLASSES,
-        "num_classes": len(AR_CLASSES),
+        "num_classes": 5,
         "n_samples": 10000,
         "files": {
-            "X": DATA_PROCESSED / "arkansas_X.npy",
-            "y": DATA_PROCESSED / "arkansas_y.npy",
-            "mask": DATA_PROCESSED / "arkansas_mask.npy",
+            "X_test": DATA_PROCESSED / "arkansas_X_test.npy",
+            "y_test": DATA_PROCESSED / "arkansas_y_test.npy",
+            "mask_test": DATA_PROCESSED / "arkansas_mask_test.npy",
+            "X_val": DATA_PROCESSED / "arkansas_X_val.npy",
+            "y_val": DATA_PROCESSED / "arkansas_y_val.npy",
+            "mask_val": DATA_PROCESSED / "arkansas_mask_val.npy",
+            "X_train": DATA_PROCESSED / "arkansas_X_train.npy",
+            "y_train": DATA_PROCESSED / "arkansas_y_train.npy",
+            "mask_train": DATA_PROCESSED / "arkansas_mask_train.npy",
             "samples": DATA_PROCESSED / "arkansas_samples.csv",
             "covariates": DATA_PROCESSED / "arkansas_covariates.csv",
         }
     },
     "california": {
         "classes": CA_CLASSES,
-        "num_classes": len(CA_CLASSES),
+        "num_classes": 6,
         "n_samples": 10000,
         "files": {
-            "X": DATA_PROCESSED / "california_X.npy",
-            "y": DATA_PROCESSED / "california_y.npy",
-            "mask": DATA_PROCESSED / "california_mask.npy",
+            "X_test": DATA_PROCESSED / "california_X_test.npy",
+            "y_test": DATA_PROCESSED / "california_y_test.npy",
+            "mask_test": DATA_PROCESSED / "california_mask_test.npy",
+            "X_val": DATA_PROCESSED / "california_X_val.npy",
+            "y_val": DATA_PROCESSED / "california_y_val.npy",
+            "mask_val": DATA_PROCESSED / "california_mask_val.npy",
+            "X_train": DATA_PROCESSED / "california_X_train.npy",
+            "y_train": DATA_PROCESSED / "california_y_train.npy",
+            "mask_train": DATA_PROCESSED / "california_mask_train.npy",
             "samples": DATA_PROCESSED / "california_samples.csv",
             "covariates": DATA_PROCESSED / "california_covariates.csv",
         }
@@ -104,7 +116,7 @@ MODEL_CONFIG = {
     "dropout": 0.1,
     "d_model_expansion": 2,      
     "use_indices": False,        
-    "use_geo_alpe": False,       
+    "use_geo_alpe": True,       
     "use_attention_pooling": False,  
     "use_covariates": False,
 }
@@ -117,7 +129,7 @@ TRAIN_CONFIG = {
     "epochs": 200,
     "lr": 0.001,
     "optimizer": "Adam",
-    "early_stop_patience": 20,
+    "early_stop_patience": 40,
     "lr_reduce_patience": 8,
     "lr_reduce_factor": 0.5,
     "min_lr": 1e-5,
