@@ -13,7 +13,7 @@ class TransformerSubmodule(nn.Module):
     def __init__(
         self,
         d_model: int,
-        nhead: int,
+        n_heads: int,
         dim_feedforward: int = 64,
         dropout: float = 0.1,
         use_geo_alpe: bool = False,
@@ -29,7 +29,7 @@ class TransformerSubmodule(nn.Module):
             self.pos_encoder = SinusoidalPE(d_model, max_len)
         
         self.self_attn = nn.MultiheadAttention(
-            d_model, nhead, dropout=dropout, batch_first=True
+            d_model, n_heads, dropout=dropout, batch_first=True
         )
         self.norm1 = nn.LayerNorm(d_model)
         

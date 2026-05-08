@@ -110,15 +110,15 @@ MODEL_CONFIG = {
     "in_channels": 10,           
     "stage_channels": [20, 40, 80],
     "n_stages": 3,
-    "n_heads": 5,
+    "n_heads": 2,
     "kernel_size": 3,            
     "dim_feedforward": 64,       
     "dropout": 0.1,
     "d_model_expansion": 2,      
-    "use_indices": False,        
+    "use_indices": True,        
     "use_geo_alpe": True,       
-    "use_attention_pooling": False,  
-    "use_covariates": False,
+    "use_attention_pooling": True,  
+    "use_covariates": True,
 }
 
 # =============================================================================

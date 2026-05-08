@@ -15,7 +15,7 @@ class CTFusion(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        nhead: int = 5,
+        n_heads: int,
         kernel_size: int = 3,
         dim_feedforward: int = 64,
         dropout: float = 0.1,
@@ -25,7 +25,7 @@ class CTFusion(nn.Module):
         super().__init__()
         self.cnn_branch = CNNSubmodule(in_channels, out_channels, kernel_size)
         self.trans_branch = TransformerSubmodule(
-            in_channels, nhead, dim_feedforward, dropout,
+            in_channels, n_heads, dim_feedforward, dropout,
             use_geo_alpe=use_geo_alpe, max_len=max_len,
         )
         # Project transformer output to match CNN output channels
